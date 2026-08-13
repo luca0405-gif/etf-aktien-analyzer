@@ -121,7 +121,7 @@ export async function apiGetForecast(assetId: string) {
   return asset?.forecast;
 }
 
-// --- Live price data (Stooq, keyless, best-effort) ------------------------
+// --- Live price data (Yahoo Finance, keyless, best-effort) ----------------
 
 export interface LiveHistoryResult {
   symbol: string;
@@ -130,17 +130,18 @@ export interface LiveHistoryResult {
 
 /**
  * Fetches real daily OHLC history via our own /api/quote proxy route
- * (app/api/quote/[symbol]/route.ts), which in turn calls Stooq server-side.
+ * (app/api/quote/[symbol]/route.ts), which in turn calls Yahoo Finance server-side.
  *
  * Returns `null` when the asset has no known live symbol mapped (see
- * lib/live-symbols.ts — currently only the 5 individual stocks). Throws when
- * a symbol is mapped but the fetch/parse fails, so callers can distinguish
- * "not supported" from "temporarily unavailable" and fall back to mock data
- * accordingly.
+ * lib/live-symbols.ts — all 10 assets are mapped, 5 US tickers plus 5 UCITS
+ * ETFs on best-guess exchange suffixes). Throws when a symbol is mapped but
+ * the fetch/parse fails, so callers can distinguish "not supported" from
+ * "temporarily unavailable" and fall back to mock data accordingly.
  *
  * UNVERIFIED: built and reviewed, but never exercised against a real
- * response — this dev sandbox's network policy blocks stooq.com outright.
- * Confirm it works once deployed somewhere with normal internet access.
+ * response — this dev sandbox's network policy blocks finance.yahoo.com
+ * outright. Confirm it works once deployed somewhere with normal internet
+ * access (see the deployed "Live-Kurs" panel).
  */
 export async function apiFetchLiveHistory(assetId: string): Promise<LiveHistoryResult | null> {
   const symbol = getLiveSymbol(assetId);
@@ -151,7 +152,7 @@ export async function apiFetchLiveHistory(assetId: string): Promise<LiveHistoryR
 
   if (!res.ok) {
     const base = body?.error ?? `Live-Daten nicht verfügbar (Status ${res.status})`;
-    const snippet = body?.upstreamSnippet ? ` — Stooq-Antwort: "${body.upstreamSnippet}"` : "";
+    const snippet = body?.upstreamSnippet ? ` — Yahoo-Antwort: "${body.upstreamSnippet}"` : "";
     throw new Error(base + snippet);
   }
 

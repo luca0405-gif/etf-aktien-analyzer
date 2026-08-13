@@ -18,8 +18,8 @@ und Szenario-Prognosen.
 - **News & KI-Sentiment**: News-Karten im finanzen.net-Stil mit
   Sentiment-Klassifizierung (Bullisch/Neutral/Bärisch, Score 0–100) und
   KI-Zusammenfassung der Kursauswirkung.
-- **Live-Kurs (Beta)**: echte Tageskurse für die 5 Einzelaktien über eine
-  serverseitige Stooq-Anbindung, mit automatischem Fallback auf
+- **Live-Kurs (Beta)**: echte Tageskurse für alle 10 Assets über eine
+  serverseitige Yahoo-Finance-Anbindung, mit automatischem Fallback auf
   Beispieldaten bei Fehlern.
 
 ## Tech-Stack

@@ -1,21 +1,30 @@
 /**
- * Maps our internal asset IDs to Stooq (stooq.com) ticker symbols for the
+ * Maps our internal asset IDs to Yahoo Finance ticker symbols for the
  * keyless live-data path (see app/api/quote/[symbol]/route.ts).
  *
- * Only the 5 individual stocks are mapped: Stooq's `<ticker>.us` convention
- * for US-listed equities is well-documented and stable. The 5 UCITS ETFs are
- * deliberately left unmapped — their listing/symbol format on Stooq varies
- * by exchange and could not be verified from this environment (the sandbox's
- * network policy blocks outbound requests to stooq.com, so nothing here has
- * been tested end-to-end). Extend this map once real access confirms the
- * right ETF symbols.
+ * Switched from Stooq to Yahoo Finance's chart JSON endpoint: Stooq's CSV
+ * endpoint returned a JS-challenge bot-check page when called from Vercel's
+ * serverless IPs (no way to solve that server-side), so it was a dead end
+ * regardless of symbol correctness.
+ *
+ * US stocks use plain tickers (AAPL, NVDA, …). The 5 UCITS ETFs use Yahoo's
+ * exchange-suffix convention: `.DE` for Xetra-listed, `.L` for London-listed.
+ * These mappings are a best guess based on each fund's primary listing —
+ * verify against the live "Live-Kurs" panel and adjust here if a symbol
+ * doesn't resolve (the API route surfaces Yahoo's raw error/response to
+ * make that fast to diagnose).
  */
 export const LIVE_SYMBOLS: Record<string, string> = {
-  "stock-apple": "aapl.us",
-  "stock-nvidia": "nvda.us",
-  "stock-microsoft": "msft.us",
-  "stock-amazon": "amzn.us",
-  "stock-alphabet": "googl.us",
+  "stock-apple": "AAPL",
+  "stock-nvidia": "NVDA",
+  "stock-microsoft": "MSFT",
+  "stock-amazon": "AMZN",
+  "stock-alphabet": "GOOGL",
+  "etf-ishares-msci-world": "EUNL.DE",
+  "etf-vanguard-ftse-all-world": "VWCE.DE",
+  "etf-ishares-core-sp500": "CSPX.L",
+  "etf-xtrackers-msci-em": "XMME.DE",
+  "etf-ishares-stoxx-europe-600": "EXSA.DE",
 };
 
 export function getLiveSymbol(assetId: string): string | undefined {

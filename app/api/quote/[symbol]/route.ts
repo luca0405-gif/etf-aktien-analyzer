@@ -1,38 +1,48 @@
 import { NextResponse } from "next/server";
 
 /**
- * Server-side proxy for Stooq's free, keyless daily-history CSV endpoint.
+ * Server-side proxy for Yahoo Finance's free, keyless chart JSON endpoint.
  * Fetching server-side (instead of directly from the browser) sidesteps
  * CORS entirely, since the browser only ever talks to our own origin.
  *
- * NOTE: this route has not been exercised end-to-end — the sandbox this was
- * built in blocks all outbound requests to external hosts (including
- * stooq.com) at the network-policy level, so there was no way to verify the
- * response shape or confirm which asset symbols actually resolve. Verify
- * against a real request once this is deployed somewhere with normal
- * internet access, and adjust the CSV parsing below if Stooq's format
- * differs from what's assumed here.
+ * Previously used Stooq's CSV endpoint, but that returned a JS-challenge
+ * bot-check page when called from Vercel's serverless IPs — no way to solve
+ * that server-side. Yahoo's `/v8/finance/chart` JSON endpoint is the
+ * long-standing de-facto keyless option (same one the `yfinance` Python
+ * library uses) and is generally tolerant of server-side requests.
+ *
+ * NOTE: still not exercised from the environment this was written in — its
+ * network policy blocks outbound requests to finance.yahoo.com too. Verify
+ * against the deployed "Live-Kurs" panel; the error response below includes
+ * a snippet of Yahoo's raw reply to make that fast to diagnose if it fails.
  */
 
 export const dynamic = "force-dynamic";
 
-function stooqDate(d: Date): string {
-  return d.toISOString().slice(0, 10).replace(/-/g, "");
+interface YahooChartResult {
+  timestamp?: number[];
+  indicators?: {
+    quote?: Array<{
+      open?: (number | null)[];
+      high?: (number | null)[];
+      low?: (number | null)[];
+      close?: (number | null)[];
+    }>;
+  };
 }
 
 export async function GET(
   _req: Request,
   { params }: { params: { symbol: string } }
 ) {
-  const symbol = params.symbol?.toLowerCase();
-  if (!symbol || !/^[a-z0-9.-]+$/.test(symbol)) {
+  const symbol = params.symbol?.toUpperCase();
+  if (!symbol || !/^[A-Z0-9.-]+$/.test(symbol)) {
     return NextResponse.json({ error: "Ungültiges Symbol" }, { status: 400 });
   }
 
-  const start = new Date();
-  start.setFullYear(start.getFullYear() - 3);
-  const end = new Date();
-  const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(symbol)}&d1=${stooqDate(start)}&d2=${stooqDate(end)}&i=d`;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol
+  )}?range=3y&interval=1d`;
 
   let res: Response;
   try {
@@ -40,59 +50,69 @@ export async function GET(
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-        Accept: "text/csv,text/plain,*/*",
+        Accept: "application/json,text/plain,*/*",
       },
-      // Stooq's CSV is date-bounded and changes at most daily; avoid
-      // Vercel/Next caching a transient upstream failure.
       cache: "no-store",
     });
   } catch (err) {
     return NextResponse.json(
-      { error: `Anfrage an Stooq fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}` },
+      { error: `Anfrage an Yahoo Finance fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}` },
       { status: 502 }
     );
   }
 
+  const rawText = await res.text();
+
   if (!res.ok) {
-    return NextResponse.json({ error: `Stooq antwortete mit Status ${res.status}` }, { status: 502 });
+    return NextResponse.json(
+      { error: `Yahoo Finance antwortete mit Status ${res.status}`, upstreamSnippet: rawText.slice(0, 300) },
+      { status: 502 }
+    );
   }
 
-  const csv = (await res.text()).trim();
-  const lines = csv.split("\n");
-  const header = lines[0]?.toLowerCase() ?? "";
-
-  if (!header.startsWith("date") || lines.length < 2) {
+  let json: { chart?: { result?: YahooChartResult[]; error?: { description?: string } | null } };
+  try {
+    json = JSON.parse(rawText);
+  } catch {
     return NextResponse.json(
-      {
-        error: `Kein Kursverlauf für Symbol "${symbol}" gefunden`,
-        // Diagnostic only: lets us see what Stooq actually sent back
-        // (rate-limit notice, block page, unknown-symbol message, …)
-        // without needing direct network access to stooq.com ourselves.
-        upstreamSnippet: csv.slice(0, 300),
-      },
+      { error: "Antwort von Yahoo Finance war kein gültiges JSON", upstreamSnippet: rawText.slice(0, 300) },
+      { status: 502 }
+    );
+  }
+
+  const chartError = json.chart?.error;
+  if (chartError) {
+    return NextResponse.json(
+      { error: chartError.description ?? `Symbol "${symbol}" nicht gefunden` },
       { status: 404 }
     );
   }
 
-  const points = lines
-    .slice(1)
-    .map((line) => {
-      const [date, open, high, low, close] = line.split(",");
-      return {
-        date,
-        open: Number(open),
-        high: Number(high),
-        low: Number(low),
-        close: Number(close),
-      };
-    })
+  const result = json.chart?.result?.[0];
+  const timestamps = result?.timestamp;
+  const quote = result?.indicators?.quote?.[0];
+
+  if (!timestamps || !quote) {
+    return NextResponse.json(
+      { error: `Kein Kursverlauf für Symbol "${symbol}" gefunden`, upstreamSnippet: rawText.slice(0, 300) },
+      { status: 404 }
+    );
+  }
+
+  const points = timestamps
+    .map((ts, i) => ({
+      date: new Date(ts * 1000).toISOString().slice(0, 10),
+      open: quote.open?.[i],
+      high: quote.high?.[i],
+      low: quote.low?.[i],
+      close: quote.close?.[i],
+    }))
     .filter(
-      (p) =>
-        p.date &&
-        Number.isFinite(p.open) &&
-        Number.isFinite(p.high) &&
-        Number.isFinite(p.low) &&
-        Number.isFinite(p.close)
+      (p): p is { date: string; open: number; high: number; low: number; close: number } =>
+        typeof p.open === "number" &&
+        typeof p.high === "number" &&
+        typeof p.low === "number" &&
+        typeof p.close === "number"
     );
 
   if (points.length === 0) {

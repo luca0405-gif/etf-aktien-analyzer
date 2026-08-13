@@ -87,7 +87,7 @@ export function LivePricePanel() {
             Live-Kurs
           </CardTitle>
           <CardDescription>
-            Echte Tageskurse (Quelle: Stooq) für Einzelaktien — experimentell
+            Echte Tageskurse (Quelle: Yahoo Finance) — experimentell
           </CardDescription>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -136,7 +136,7 @@ export function LivePricePanel() {
       </CardHeader>
       <CardContent>
         <div className="mb-3 flex items-center gap-2">
-          {status === "success" && <Badge variant="bullish">Live · Stooq</Badge>}
+          {status === "success" && <Badge variant="bullish">Live · Yahoo Finance</Badge>}
           {status === "loading" && <Badge variant="neutral">Lädt…</Badge>}
           {status === "error" && <Badge variant="bearish">Mock-Fallback</Badge>}
           {asset && (
@@ -150,9 +150,9 @@ export function LivePricePanel() {
           <div className="mb-3 flex items-start gap-2 rounded-md border border-bear/30 bg-bear/10 p-2.5 text-xs text-bear">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>
-              Live-Daten aktuell nicht abrufbar ({error}). Zeige stattdessen Mock-Daten. Diese
-              Anbindung wurde in einer Sandbox ohne Internetzugriff auf externe Anbieter gebaut und
-              ist bisher nicht gegen echte Antworten getestet — nach dem Deployment ggf. anpassen.
+              Live-Daten aktuell nicht abrufbar ({error}). Zeige stattdessen Mock-Daten. Symbol-
+              Zuordnung ggf. in lib/live-symbols.ts anpassen, falls das Problem an einem falschen
+              Ticker liegt.
             </span>
           </div>
         )}
