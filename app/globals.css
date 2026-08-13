@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 25% 6%;
+    --foreground: 210 20% 92%;
+
+    --card: 220 22% 9%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 220 24% 8%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 199 89% 55%;
+    --primary-foreground: 220 25% 6%;
+
+    --secondary: 220 18% 15%;
+    --secondary-foreground: 210 20% 92%;
+
+    --muted: 220 18% 14%;
+    --muted-foreground: 215 14% 62%;
+
+    --accent: 199 89% 55%;
+    --accent-foreground: 220 25% 6%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 20% 96%;
+
+    --border: 220 16% 18%;
+    --input: 220 16% 18%;
+    --ring: 199 89% 55%;
+
+    /* status + chart colors: validated dark-surface categorical/status palette
+       (see dataviz skill references/palette.md) — raw hex, not hsl() */
+    --bull: #0ca30c;
+    --bear: #d03b3b;
+    --neutral: #fab219;
+
+    --chart-1: #3987e5; /* blue */
+    --chart-2: #d95926; /* orange */
+    --chart-3: #199e70; /* aqua */
+    --chart-4: #c98500; /* yellow */
+    --chart-5: #d55181; /* magenta */
+    --chart-6: #9085e9; /* violet */
+
+    --radius: 0.625rem;
+
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, hsl(199 89% 55% / 0.08), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, hsl(271 76% 65% / 0.06), transparent 55%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out;
+}
