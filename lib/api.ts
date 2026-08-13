@@ -150,7 +150,9 @@ export async function apiFetchLiveHistory(assetId: string): Promise<LiveHistoryR
   const body = await res.json();
 
   if (!res.ok) {
-    throw new Error(body?.error ?? `Live-Daten nicht verfügbar (Status ${res.status})`);
+    const base = body?.error ?? `Live-Daten nicht verfügbar (Status ${res.status})`;
+    const snippet = body?.upstreamSnippet ? ` — Stooq-Antwort: "${body.upstreamSnippet}"` : "";
+    throw new Error(base + snippet);
   }
 
   const points: PricePoint[] = body.points.map(

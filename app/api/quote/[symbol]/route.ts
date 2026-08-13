@@ -31,11 +31,21 @@ export async function GET(
 
   const start = new Date();
   start.setFullYear(start.getFullYear() - 3);
-  const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(symbol)}&d1=${stooqDate(start)}&i=d`;
+  const end = new Date();
+  const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(symbol)}&d1=${stooqDate(start)}&d2=${stooqDate(end)}&i=d`;
 
   let res: Response;
   try {
-    res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    res = await fetch(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        Accept: "text/csv,text/plain,*/*",
+      },
+      // Stooq's CSV is date-bounded and changes at most daily; avoid
+      // Vercel/Next caching a transient upstream failure.
+      cache: "no-store",
+    });
   } catch (err) {
     return NextResponse.json(
       { error: `Anfrage an Stooq fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}` },
@@ -53,7 +63,13 @@ export async function GET(
 
   if (!header.startsWith("date") || lines.length < 2) {
     return NextResponse.json(
-      { error: `Kein Kursverlauf für Symbol "${symbol}" gefunden` },
+      {
+        error: `Kein Kursverlauf für Symbol "${symbol}" gefunden`,
+        // Diagnostic only: lets us see what Stooq actually sent back
+        // (rate-limit notice, block page, unknown-symbol message, …)
+        // without needing direct network access to stooq.com ourselves.
+        upstreamSnippet: csv.slice(0, 300),
+      },
       { status: 404 }
     );
   }
